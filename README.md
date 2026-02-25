@@ -1,4 +1,4 @@
-# chatbot-pydanticai-template
+# Chatbot Template Project Using PydanticAI
 
 A minimal template for building a **custom chatbot** with [Pydantic AI](https://ai.pydantic.dev/) and the official **[Pydantic AI Chat UI](https://github.com/pydantic/ai-chat-ui)** (React + Vercel AI SDK), with clear **extension points** for students.
 
@@ -86,14 +86,6 @@ uv sync --extra logfire
 # MCP client support
 uv sync --extra mcp
 ```
-
-## Code comments
-
-The code is commented so students can follow:
-
-- How the agent is built and where instructions/model come from.
-- How the streaming response is generated and how messages are serialized.
-- Where to plug in a different memory backend, vector store, or tools.
 
 ## Licence
 
