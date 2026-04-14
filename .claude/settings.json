@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv --version)",
+      "Bash(ty --version)",
+      "Bash(uv tool:*)",
+      "Bash(uv sync:*)"
+    ]
+  }
+}
