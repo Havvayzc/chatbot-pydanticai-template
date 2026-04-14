@@ -13,10 +13,30 @@ below or add optional config in chatbot/config.py.
 from __future__ import annotations
 
 from chatbot.agent import agent
-from chatbot.config import get_litellm_supported_models, use_litellm
+from chatbot.config import (
+    LITELLM_API_KEY,
+    LITELLM_SERVER_URL,
+    get_litellm_supported_models,
+    use_litellm,
+)
 
-# Models to show in the UI. When using LiteLLM, the agent's model is the only one.
-_web_models = get_litellm_supported_models() if use_litellm() else {"GPT-4o mini": "openai:gpt-4o-mini"}
+if use_litellm():
+    # Build actual Model objects so the UI can switch models without needing `infer_model(...)`
+    # to understand custom LiteLLM identifiers.
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.providers.litellm import LiteLLMProvider
+
+    _provider = LiteLLMProvider(
+        api_base=LITELLM_SERVER_URL,
+        api_key=LITELLM_API_KEY or "litellm-placeholder",
+    )
+    _web_models = {
+        model_id: OpenAIChatModel(model_id, provider=_provider)
+        for model_id in get_litellm_supported_models()
+        if model_id != "all-proxy-models"
+    }
+else:
+    _web_models = {"GPT-4o mini": "openai:gpt-4o-mini"}
 
 # Create the web app using the official Pydantic AI Chat UI.
 # - Default: UI is fetched from CDN (@pydantic/ai-chat-ui) and cached.
