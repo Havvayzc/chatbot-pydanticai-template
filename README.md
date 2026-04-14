@@ -89,21 +89,7 @@ Edit **`chatbot/config.py`**:
 
 You can also load these from environment variables or a config file.
 
-### 2. Conversational memory
-
-Default behaviour is in **`chatbot/memory.py`**: a SQLite store that persists messages under `.chat_messages.sqlite`.
-
-To change the backend (e.g. Redis, PostgreSQL, or in-memory for tests), replace the `ChatMemory` implementation or the logic that calls `get_messages()` / `add_messages()` so it uses your store. The default **Pydantic AI Chat UI** keeps conversations in the browser (localStorage). To use server-side memory, integrate `ChatMemory` into a custom route that uses `VercelAIAdapter` and passes `message_history` from your store (see [Pydantic AI message history](https://ai.pydantic.dev/message-history/)).
-
-### 3. Vector store (RAG)
-
-**`chatbot/extension_points/vector_store.py`** is a placeholder. To add retrieval-augmented generation:
-
-1. Add a dependency (e.g. `chromadb`, `qdrant-client`) in `pyproject.toml`.
-2. Implement `retrieve(query, top_k)` (or similar) to return relevant chunks.
-3. Use that context in the agent (e.g. via dynamic `@agent.instructions` or by prepending context to the user message).
-
-### 4. MCP tools
+### 2. MCP tools
 
 **`chatbot/extension_points/tools.py`** exposes `register_agent_tools(agent)`. By default it does nothing.
 

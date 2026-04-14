@@ -12,7 +12,7 @@ below or add optional config in chatbot/config.py.
 
 from __future__ import annotations
 
-from chatbot.agent import agent
+from chatbot.agent import agent as standard_agent
 from chatbot.config import (
     LITELLM_API_KEY,
     LITELLM_SERVER_URL,
@@ -43,6 +43,9 @@ else:
 # - To use a local build: pass html_source=Path("static/ai-chat-ui/index.html") after building.
 # - models: optional dict of display name -> model id (agent's model is always included).
 # - builtin_tools: optional list (e.g. [WebSearchTool(), CodeExecutionTool()]) to expose in the UI.
+
+agent = standard_agent
+
 app = agent.to_web(
     models=_web_models,
     builtin_tools=[],
