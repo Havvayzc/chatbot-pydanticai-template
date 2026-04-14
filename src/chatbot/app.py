@@ -12,20 +12,11 @@ below or add optional config in chatbot/config.py.
 
 from __future__ import annotations
 
-# Optional: enable observability with Pydantic Logfire (no-op if not installed).
-try:
-    import logfire
-
-    logfire.configure(send_to_logfire="if-token-present")
-    logfire.instrument_pydantic_ai()
-except ImportError:
-    pass
-
 from chatbot.agent import agent
-from chatbot.config import use_litellm
+from chatbot.config import get_litellm_supported_models, use_litellm
 
 # Models to show in the UI. When using LiteLLM, the agent's model is the only one.
-_web_models = {} if use_litellm() else {"GPT-4o mini": "openai:gpt-4o-mini"}
+_web_models = get_litellm_supported_models() if use_litellm() else {"GPT-4o mini": "openai:gpt-4o-mini"}
 
 # Create the web app using the official Pydantic AI Chat UI.
 # - Default: UI is fetched from CDN (@pydantic/ai-chat-ui) and cached.
@@ -37,13 +28,6 @@ app = agent.to_web(
     builtin_tools=[],
 )
 
-# Optional: instrument the app for Logfire (if installed with starlette extra).
-try:
-    import logfire
-
-    logfire.instrument_starlette(app)
-except (ImportError, RuntimeError):
-    pass
 
 # Run with: uv run uvicorn chatbot.app:app --reload
 # Then open http://localhost:8000

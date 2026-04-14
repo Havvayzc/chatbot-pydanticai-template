@@ -66,6 +66,8 @@ export OPENAI_API_KEY=sk-...
 uv run uvicorn chatbot.app:app --reload
 ```
 
+You can also add the requirement env variables to a `.env` file.
+
 ## Project layout
 
 | Path | Purpose |
@@ -74,8 +76,6 @@ uv run uvicorn chatbot.app:app --reload
 | `src/chatbot/agent.py` | Pydantic AI agent creation and tool registration |
 | `src/chatbot/app.py` | Starlette app via `agent.to_web()` – serves the [ai-chat-ui](https://github.com/pydantic/ai-chat-ui) and `/api` |
 | `src/chatbot/memory.py` | **Extension point:** server-side conversational memory (SQLite); used if you add a custom UI or adapter |
-| `src/chatbot/extension_points/tools.py` | **Extension point:** add tools (e.g. MCP) to the agent |
-| `src/chatbot/extension_points/vector_store.py` | **Extension point:** RAG / vector search placeholder |
 | `static/` | Optional: previous simple HTML/JS UI (see `static/README.md`); not used when running `agent.to_web()` |
 
 ## Extension points (for students)

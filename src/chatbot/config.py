@@ -12,6 +12,15 @@ Backend mode (flag):
 """
 
 import os
+from typing import Any
+
+import httpx
+from dotenv import load_dotenv
+
+# Load environment variables from a local `.env` file (if present).
+# This must happen before reading `os.environ` below, since several settings
+# are evaluated at import time.
+load_dotenv()
 
 # Default instructions sent to the model as the "system" role. This shapes
 # how the assistant responds (tone, scope, rules).
@@ -46,3 +55,48 @@ LITELLM_API_KEY = LITELLM_API_KEY_ENV or ""
 
 # Model name sent to LiteLLM (e.g. "openai/gpt-4o-mini" to use OpenAI via LiteLLM).
 LITELLM_MODEL = os.environ.get("LITELLM_MODEL", "").strip() or "gpt-4o-mini"
+
+
+def get_litellm_supported_models(timeout_s: float = 5.0) -> list[str]:
+    """
+    Retrieve supported model IDs from the configured LiteLLM server.
+
+    This calls the OpenAI-compatible `GET /v1/models` endpoint exposed by the LiteLLM proxy.
+    The request uses `LITELLM_SERVER_URL` and authenticates with `LITELLM_API_KEY` when set.
+
+    Returns an empty list if LiteLLM is not configured or the request fails.
+    """
+    if not use_litellm():
+        return []
+
+    base = LITELLM_SERVER_URL.rstrip("/")
+    api_base = base if base.endswith("/v1") else f"{base}/v1"
+    url = f"{api_base}/models"
+
+    headers: dict[str, str] = {}
+    if LITELLM_API_KEY:
+        # Common LiteLLM proxy auth patterns.
+        headers["Authorization"] = f"Bearer {LITELLM_API_KEY}"
+        headers["x-api-key"] = LITELLM_API_KEY
+
+    try:
+        resp = httpx.get(url, headers=headers, timeout=timeout_s)
+        resp.raise_for_status()
+        payload: Any = resp.json()
+    except Exception:
+        return []
+
+    data = payload.get("data")
+    if not isinstance(data, list):
+        return []
+
+    models: list[str] = []
+    for item in data:
+        if isinstance(item, dict):
+            model_id = item.get("id")
+            if isinstance(model_id, str) and model_id.strip():
+                models.append(model_id)
+
+    # Stable output, avoid duplicates.
+    return sorted(set(models))
+
