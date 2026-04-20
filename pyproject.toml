@@ -10,6 +10,10 @@ dependencies = [
     "uvicorn[standard]>=0.32.0",
     "python-dotenv>=1.0.0",
     "pydantic-deep>=0.3.13",
+    # BPMN Pipeline — LLM provider SDKs
+    "anthropic>=0.50.0",
+    "google-generativeai>=0.8.0",
+    "aiofiles>=23.0.0",
 ]
 
 [project.optional-dependencies]

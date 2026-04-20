@@ -1,0 +1,10 @@
+{
+  "name": "bpmn-tools",
+  "version": "1.0.0",
+  "description": "BPMN validation and layout tools for the thesis pipeline",
+  "dependencies": {
+    "bpmn-moddle": "^8.1.0",
+    "bpmnlint": "^11.0.0",
+    "bpmn-auto-layout": "^0.4.0"
+  }
+}
