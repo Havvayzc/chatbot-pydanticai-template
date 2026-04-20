@@ -15,9 +15,10 @@ Perform exactly FOUR checks:
    Look for: tasks assigned to the wrong actor or department.
 
 CRITICAL RULE:
-Every finding MUST include a verbatim quote from the transcript as evidence.
+Every finding MUST include a short verbatim quote from the transcript as evidence (max 120 characters).
 Do NOT include findings you cannot support with a direct quote from the transcript.
 A finding without evidence is a hallucination — omit it entirely.
+Inside the JSON string, replace any double-quote characters in the evidence with single quotes, and remove any newlines.
 
 Severity:
 - critical: Missing main steps, hallucinated elements, clearly wrong actor assignment, inverted conditions.

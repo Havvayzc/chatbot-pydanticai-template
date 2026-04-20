@@ -35,7 +35,12 @@ async function validate(xml) {
   // --- Step 2: Model soundness ---
   try {
     const linter = new Linter({
-      config: { extends: 'bpmnlint:recommended' },
+      config: {
+        extends: 'bpmnlint:recommended',
+        rules: {
+          'no-bpmndi': 'error'
+        }
+      },
       resolver: new NodeResolver()
     });
     const lintResults = await linter.lint(rootElement);

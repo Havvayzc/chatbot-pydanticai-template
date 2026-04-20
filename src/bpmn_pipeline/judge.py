@@ -76,6 +76,19 @@ def _parse_judge_output(raw: str) -> JudgeResult:
 
     try:
         data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        # Attempt a repair: remove literal control characters (newlines inside strings)
+        logger.warning(f"Judge: initial JSON parse failed ({exc}), attempting repair...")
+        text_repaired = re.sub(r'(?<!\\)\n', ' ', text)
+        text_repaired = re.sub(r'(?<!\\)\r', '', text_repaired)
+        try:
+            data = json.loads(text_repaired)
+            logger.info("Judge: JSON repaired successfully.")
+        except json.JSONDecodeError as exc2:
+            logger.error(f"Judge: could not parse response as JSON: {exc2}\nRaw:\n{raw[:500]}")
+            return JudgeResult(findings=[], summary=f"Judge parse error: {exc2}")
+
+    try:
         raw_findings: list = data.get("findings", [])
         summary: str = data.get("summary", "No summary provided.")
 
@@ -92,6 +105,6 @@ def _parse_judge_output(raw: str) -> JudgeResult:
 
         return JudgeResult(findings=valid_findings, summary=summary)
 
-    except (json.JSONDecodeError, KeyError) as exc:
-        logger.error(f"Judge: could not parse response as JSON: {exc}\nRaw:\n{raw[:500]}")
+    except KeyError as exc:
+        logger.error(f"Judge: unexpected JSON structure: {exc}")
         return JudgeResult(findings=[], summary=f"Judge parse error: {exc}")
