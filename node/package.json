@@ -1,0 +1,13 @@
+{
+  "name": "bpmn-validator",
+  "version": "1.0.0",
+  "description": "BPMN 2.0 validation via bpmn-moddle and bpmnlint",
+  "main": "validate.js",
+  "scripts": {
+    "validate": "node validate.js"
+  },
+  "dependencies": {
+    "bpmn-moddle": "^8.1.0",
+    "bpmnlint": "^11.0.0"
+  }
+}

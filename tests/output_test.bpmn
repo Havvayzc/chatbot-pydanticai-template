@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+PROZESSBESCHREIBUNG:
+
+Pool 1: Kunde
+- StartEvent: "Bedarf erkannt"
+- Task: "Anfrage senden" → MessageFlow an Vertrieb
+- IntermediateCatchEvent (Message): "Angebot eingegangen" ← MessageFlow von Vertrieb
+- Task: "Angebot prüfen"
+- ExclusiveGateway: "Angebot akzeptiert?"
+  - Ja: Task "Auftrag erteilen" → MessageFlow an Vertrieb
+    - IntermediateCatchEvent (Message): "Gerät eingegangen" ← MessageFlow von Versand
+    - IntermediateCatchEvent (Message): "Rechnung eingegangen" ← MessageFlow von Verwaltung
+    - Task: "Rechnung bezahlen" → EndEvent "Prozess abgeschlossen"
+  - Nein: EndEvent "Angebot abgelehnt"
+- Außerdem: IntermediateCatchEvent (Message): "Absage eingegangen" ← MessageFlow von Vertrieb → EndEvent
+
+Pool 2: Spezialfertiger mit Lanes: Vertrieb, Ingenieur, Einkauf, Produktion, Versand, Verwaltung
+Lane Vertrieb:
+- StartEvent (Message): "Anfrage eingegangen" ← MessageFlow von Kunde
+- Task: "Anfrage erfassen" → MessageFlow/SequenceFlow an Ingenieur
+- ExclusiveGateway nach Machbarkeitsprüfung: machbar / nicht machbar
+  - Nicht machbar: Task "Absage senden" → MessageFlow an Kunde → EndEvent
+  - Machbar: Task "Angebot erstellen" → MessageFlow an Kunde
+
+Lane Ingenieur:
+- Task: "Machbarkeit prüfen"
+- ExclusiveGateway: "Machbar?"
+- Task: "Fertigungsplan erstellen"
+- Task: "Materialliste erstellen"
+
+Lane Einkauf:
+- Task: "Teile bestellen"
+
+Lane Produktion:
+- Task: "Gerät fertigen"
+- Task: "Qualität prüfen"
+
+Lane Versand:
+- Task: "Gerät verpacken und liefern" → MessageFlow an Kunde
+
+Lane Verwaltung:
+- Task: "Rechnung erstellen" → MessageFlow an Kunde
+- EndEvent: "Auftrag abgeschlossen"
+-->
+<bpmn2:definitions xmlns:bpmn2="http://www.omg.org/spec/BPMN/20100524/MODEL"
+  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  id="Definitions_1"
+  targetNamespace="http://bpmn.io/schema/bpmn"
+  exporter="BPMN-Pipeline"
+  exporterVersion="1.0">
+
+  <bpmn2:collaboration id="Collaboration_1">
+    <bpmn2:participant id="Participant_Kunde" name="Kunde" processRef="Process_Kunde" />
+    <bpmn2:participant id="Participant_Spezialfertiger" name="Spezialfertiger" processRef="Process_Spezialfertiger" />
+
+    <bpmn2:messageFlow id="MF_AnfrageSenden" name="Anfrage" sourceRef="Task_AnfrageSenden" targetRef="StartEvent_AnfrageEingegangen" />
+    <bpmn2:messageFlow id="MF_AbsageSenden" name="Absage" sourceRef="Task_AbsageSenden" targetRef="Event_AbsageEingegangen" />
+    <bpmn2:messageFlow id="MF_AngebotSenden" name="Angebot" sourceRef="Task_AngebotErstellen" targetRef="Event_AngebotEingegangen" />
+    <bpmn2:messageFlow id="MF_AuftragErteilen" name="Auftrag" sourceRef="Task_AuftragErteilen" targetRef="Event_AuftragEingegangen" />
+    <bpmn2:messageFlow id="MF_GeraetLiefern" name="Ger&#228;t" sourceRef="Task_GeraetVerpackenLiefern" targetRef="Event_GeraetEingegangen" />
+    <bpmn2:messageFlow id="MF_RechnungSenden" name="Rechnung" sourceRef="Task_RechnungErstellen" targetRef="Event_RechnungEingegangen" />
+    <bpmn2:messageFlow id="MF_ZahlungSenden" name="Zahlung" sourceRef="Task_RechnungBezahlen" targetRef="Event_ZahlungEingegangen" />
+  </bpmn2:collaboration>
+
+  <!-- ===================== KUNDE PROCESS ===================== -->
+  <bpmn2:process id="Process_Kunde" isExecutable="false">
+    <bpmn2:startEvent id="StartEvent_Kunde" name="Bedarf erkannt">
+      <bpmn2:outgoing>SF_K1</bpmn2:outgoing>
+    </bpmn2:startEvent>
+
+    <bpmn2:task id="Task_AnfrageSenden" name="Anfrage senden">
+      <bpmn2:incoming>SF_K1</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K2</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:eventBasedGateway id="GW_EventBased" name="Auf Antwort warten">
+      <bpmn2:incoming>SF_K2</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K3</bpmn2:outgoing>
+      <bpmn2:outgoing>SF_K4</bpmn2:outgoing>
+    </bpmn2:eventBasedGateway>
+
+    <bpmn2:intermediateCatchEvent id="Event_AngebotEingegangen" name="Angebot eingegangen">
+      <bpmn2:incoming>SF_K3</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K5</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Angebot" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:intermediateCatchEvent id="Event_AbsageEingegangen" name="Absage eingegangen">
+      <bpmn2:incoming>SF_K4</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K6</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Absage" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:endEvent id="EndEvent_Absage" name="Anfrage abgelehnt">
+      <bpmn2:incoming>SF_K6</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:task id="Task_AngebotPruefen" name="Angebot pr&#252;fen">
+      <bpmn2:incoming>SF_K5</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K7</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:exclusiveGateway id="GW_AngebotAkzeptiert" name="Angebot akzeptiert?">
+      <bpmn2:incoming>SF_K7</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K8</bpmn2:outgoing>
+      <bpmn2:outgoing>SF_K9</bpmn2:outgoing>
+    </bpmn2:exclusiveGateway>
+
+    <bpmn2:endEvent id="EndEvent_Abgelehnt" name="Angebot abgelehnt">
+      <bpmn2:incoming>SF_K9</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:task id="Task_AuftragErteilen" name="Auftrag erteilen">
+      <bpmn2:incoming>SF_K8</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K10</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:intermediateCatchEvent id="Event_GeraetEingegangen" name="Ger&#228;t eingegangen">
+      <bpmn2:incoming>SF_K10</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K11</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Geraet" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:intermediateCatchEvent id="Event_RechnungEingegangen" name="Rechnung eingegangen">
+      <bpmn2:incoming>SF_K11</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K12</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Rechnung" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:task id="Task_RechnungBezahlen" name="Rechnung bezahlen">
+      <bpmn2:incoming>SF_K12</bpmn2:incoming>
+      <bpmn2:outgoing>SF_K13</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:endEvent id="EndEvent_Kunde" name="Prozess abgeschlossen">
+      <bpmn2:incoming>SF_K13</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:sequenceFlow id="SF_K1" sourceRef="StartEvent_Kunde" targetRef="Task_AnfrageSenden" />
+    <bpmn2:sequenceFlow id="SF_K2" sourceRef="Task_AnfrageSenden" targetRef="GW_EventBased" />
+    <bpmn2:sequenceFlow id="SF_K3" sourceRef="GW_EventBased" targetRef="Event_AngebotEingegangen" />
+    <bpmn2:sequenceFlow id="SF_K4" sourceRef="GW_EventBased" targetRef="Event_AbsageEingegangen" />
+    <bpmn2:sequenceFlow id="SF_K5" sourceRef="Event_AngebotEingegangen" targetRef="Task_AngebotPruefen" />
+    <bpmn2:sequenceFlow id="SF_K6" sourceRef="Event_AbsageEingegangen" targetRef="EndEvent_Absage" />
+    <bpmn2:sequenceFlow id="SF_K7" sourceRef="Task_AngebotPruefen" targetRef="GW_AngebotAkzeptiert" />
+    <bpmn2:sequenceFlow id="SF_K8" name="Ja" sourceRef="GW_AngebotAkzeptiert" targetRef="Task_AuftragErteilen" />
+    <bpmn2:sequenceFlow id="SF_K9" name="Nein" sourceRef="GW_AngebotAkzeptiert" targetRef="EndEvent_Abgelehnt" />
+    <bpmn2:sequenceFlow id="SF_K10" sourceRef="Task_AuftragErteilen" targetRef="Event_GeraetEingegangen" />
+    <bpmn2:sequenceFlow id="SF_K11" sourceRef="Event_GeraetEingegangen" targetRef="Event_RechnungEingegangen" />
+    <bpmn2:sequenceFlow id="SF_K12" sourceRef="Event_RechnungEingegangen" targetRef="Task_RechnungBezahlen" />
+    <bpmn2:sequenceFlow id="SF_K13" sourceRef="Task_RechnungBezahlen" targetRef="EndEvent_Kunde" />
+  </bpmn2:process>
+
+  <!-- ===================== SPEZIALFERTIGER PROCESS ===================== -->
+  <bpmn2:process id="Process_Spezialfertiger" isExecutable="false">
+    <bpmn2:laneSet id="LaneSet_1">
+      <bpmn2:lane id="Lane_Vertrieb" name="Vertrieb">
+        <bpmn2:flowNodeRef>StartEvent_AnfrageEingegangen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_AnfrageErfassen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>GW_Machbar</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_AbsageSenden</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>EndEvent_Absage_SF</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_AngebotErstellen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Event_AuftragEingegangen</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="Lane_Ingenieur" name="Ingenieur">
+        <bpmn2:flowNodeRef>Task_MachbarkeitPruefen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_FertigungsplanErstellen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_MateriallisteErstellen</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="Lane_Einkauf" name="Einkauf">
+        <bpmn2:flowNodeRef>Task_TeileBestellen</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="Lane_Produktion" name="Produktion">
+        <bpmn2:flowNodeRef>Task_GeraetFertigen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Task_QualitaetPruefen</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="Lane_Versand" name="Versand">
+        <bpmn2:flowNodeRef>Task_GeraetVerpackenLiefern</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+      <bpmn2:lane id="Lane_Verwaltung" name="Verwaltung">
+        <bpmn2:flowNodeRef>Task_RechnungErstellen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>Event_ZahlungEingegangen</bpmn2:flowNodeRef>
+        <bpmn2:flowNodeRef>EndEvent_Spezialfertiger</bpmn2:flowNodeRef>
+      </bpmn2:lane>
+    </bpmn2:laneSet>
+
+    <bpmn2:startEvent id="StartEvent_AnfrageEingegangen" name="Anfrage eingegangen">
+      <bpmn2:outgoing>SF_S1</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_AnfrageStart" />
+    </bpmn2:startEvent>
+
+    <bpmn2:task id="Task_AnfrageErfassen" name="Anfrage erfassen">
+      <bpmn2:incoming>SF_S1</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S2</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_MachbarkeitPruefen" name="Machbarkeit pr&#252;fen">
+      <bpmn2:incoming>SF_S2</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S3</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:exclusiveGateway id="GW_Machbar" name="Machbar?">
+      <bpmn2:incoming>SF_S3</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S4</bpmn2:outgoing>
+      <bpmn2:outgoing>SF_S5</bpmn2:outgoing>
+    </bpmn2:exclusiveGateway>
+
+    <bpmn2:task id="Task_AbsageSenden" name="Absage senden">
+      <bpmn2:incoming>SF_S4</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S6</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:endEvent id="EndEvent_Absage_SF" name="Anfrage abgelehnt">
+      <bpmn2:incoming>SF_S6</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:task id="Task_FertigungsplanErstellen" name="Fertigungsplan erstellen">
+      <bpmn2:incoming>SF_S5</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S7</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_MateriallisteErstellen" name="Materialliste erstellen">
+      <bpmn2:incoming>SF_S7</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S8</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_AngebotErstellen" name="Angebot erstellen">
+      <bpmn2:incoming>SF_S8</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S9</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:intermediateCatchEvent id="Event_AuftragEingegangen" name="Auftrag eingegangen">
+      <bpmn2:incoming>SF_S9</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S10</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Auftrag" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:task id="Task_TeileBestellen" name="Teile bestellen">
+      <bpmn2:incoming>SF_S10</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S11</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_GeraetFertigen" name="Ger&#228;t fertigen">
+      <bpmn2:incoming>SF_S11</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S12</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_QualitaetPruefen" name="Qualit&#228;t pr&#252;fen">
+      <bpmn2:incoming>SF_S12</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S13</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_GeraetVerpackenLiefern" name="Ger&#228;t verpacken und liefern">
+      <bpmn2:incoming>SF_S13</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S14</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:task id="Task_RechnungErstellen" name="Rechnung erstellen">
+      <bpmn2:incoming>SF_S14</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S15</bpmn2:outgoing>
+    </bpmn2:task>
+
+    <bpmn2:intermediateCatchEvent id="Event_ZahlungEingegangen" name="Zahlung eingegangen">
+      <bpmn2:incoming>SF_S15</bpmn2:incoming>
+      <bpmn2:outgoing>SF_S16</bpmn2:outgoing>
+      <bpmn2:messageEventDefinition id="MED_Zahlung" />
+    </bpmn2:intermediateCatchEvent>
+
+    <bpmn2:endEvent id="EndEvent_Spezialfertiger" name="Auftrag abgeschlossen">
+      <bpmn2:incoming>SF_S16</bpmn2:incoming>
+    </bpmn2:endEvent>
+
+    <bpmn2:sequenceFlow id="SF_S1" sourceRef="StartEvent_AnfrageEingegangen" targetRef="Task_AnfrageErfassen" />
+    <bpmn2:sequenceFlow id="SF_S2" sourceRef="Task_AnfrageErfassen" targetRef="Task_MachbarkeitPruefen" />
+    <bpmn2:sequenceFlow id="SF_S3" sourceRef="Task_MachbarkeitPruefen" targetRef="GW_Machbar" />
+    <bpmn2:sequenceFlow id="SF_S4" name="Nein" sourceRef="GW_Machbar" targetRef="Task_AbsageSenden" />
+    <bpmn2:sequenceFlow id="SF_S5" name="Ja" sourceRef="GW_Machbar" targetRef="Task_FertigungsplanErstellen" />
+    <bpmn2:sequenceFlow id="SF_S6" sourceRef="Task_AbsageSenden" targetRef="EndEvent_Absage_SF" />
+    <bpmn2:sequenceFlow id="SF_S7" sourceRef="Task_FertigungsplanErstellen" targetRef="Task_MateriallisteErstellen" />
+    <bpmn2:sequenceFlow id="SF_S8" sourceRef="Task_MateriallisteErstellen" targetRef="Task_AngebotErstellen" />
+    <bpmn2:sequenceFlow id="SF_S9" sourceRef="Task_AngebotErstellen" targetRef="Event_AuftragEingegangen" />
+    <bpmn2:sequenceFlow id="SF_S10" sourceRef="Event_AuftragEingegangen" targetRef="Task_TeileBestellen" />
+    <bpmn2:sequenceFlow id="SF_S11" sourceRef="Task_TeileBestellen" targetRef="Task_GeraetFertigen" />
+    <bpmn2:sequenceFlow id="SF_S12" sourceRef="Task_GeraetFertigen" targetRef="Task_QualitaetPruefen" />
+    <bpmn2:sequenceFlow id="SF_S13" sourceRef="Task_QualitaetPruefen" targetRef="Task_GeraetVerpackenLiefern" />
+    <bpmn2:sequenceFlow id="SF_S14" sourceRef="Task_GeraetVerpackenLiefern" targetRef="Task_RechnungErstellen" />
+    <bpmn2:sequenceFlow id="SF_S15" sourceRef="Task_RechnungErstellen" targetRef="Event_ZahlungEingegangen" />
+    <bpmn2:sequenceFlow id="SF_S16" sourceRef="Event_ZahlungEingegangen" targetRef="EndEvent_Spezialfertiger" />
+  </bpmn2:process>
+
+  <!-- ===================== BPMN DI ===================== -->
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_1">
+
+      <!-- ===== Participant: Kunde ===== -->
+      <bpmndi:BPMNShape id="Shape_Participant_Kunde" bpmnElement="Participant_Kunde" isHorizontal="true">
+        <dc:Bounds x="160" y="60" width="1800" height="250" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_StartEvent_Kunde" bpmnElement="StartEvent_Kunde">
+        <dc:Bounds x="232" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AnfrageSenden" bpmnElement="Task_AnfrageSenden">
+        <dc:Bounds x="310" y="145" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_GW_EventBased" bpmnElement="GW_EventBased">
+        <dc:Bounds x="455" y="160" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_AngebotEingegangen" bpmnElement="Event_AngebotEingegangen">
+        <dc:Bounds x="552" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_AbsageEingegangen" bpmnElement="Event_AbsageEingegangen">
+        <dc:Bounds x="552" y="87" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Absage" bpmnElement="EndEvent_Absage">
+        <dc:Bounds x="632" y="87" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AngebotPruefen" bpmnElement="Task_AngebotPruefen">
+        <dc:Bounds x="640" y="145" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_GW_AngebotAkzeptiert" bpmnElement="GW_AngebotAkzeptiert" isMarkerVisible="true">
+        <dc:Bounds x="785" y="160" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Abgelehnt" bpmnElement="EndEvent_Abgelehnt">
+        <dc:Bounds x="882" y="87" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AuftragErteilen" bpmnElement="Task_AuftragErteilen">
+        <dc:Bounds x="880" y="145" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_GeraetEingegangen" bpmnElement="Event_GeraetEingegangen">
+        <dc:Bounds x="1032" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_RechnungEingegangen" bpmnElement="Event_RechnungEingegangen">
+        <dc:Bounds x="1122" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_RechnungBezahlen" bpmnElement="Task_RechnungBezahlen">
+        <dc:Bounds x="1210" y="145" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Kunde" bpmnElement="EndEvent_Kunde">
+        <dc:Bounds x="1362" y="167" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Kunde SequenceFlow Edges -->
+      <bpmndi:BPMNEdge id="Edge_SF_K1" bpmnElement="SF_K1">
+        <di:waypoint x="268" y="185" />
+        <di:waypoint x="310" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K2" bpmnElement="SF_K2">
+        <di:waypoint x="410" y="185" />
+        <di:waypoint x="455" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K3" bpmnElement="SF_K3">
+        <di:waypoint x="505" y="185" />
+        <di:waypoint x="552" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K4" bpmnElement="SF_K4">
+        <di:waypoint x="480" y="160" />
+        <di:waypoint x="480" y="105" />
+        <di:waypoint x="552" y="105" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K5" bpmnElement="SF_K5">
+        <di:waypoint x="588" y="185" />
+        <di:waypoint x="640" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K6" bpmnElement="SF_K6">
+        <di:waypoint x="588" y="105" />
+        <di:waypoint x="632" y="105" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K7" bpmnElement="SF_K7">
+        <di:waypoint x="740" y="185" />
+        <di:waypoint x="785" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K8" bpmnElement="SF_K8">
+        <di:waypoint x="835" y="185" />
+        <di:waypoint x="880" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K9" bpmnElement="SF_K9">
+        <di:waypoint x="810" y="160" />
+        <di:waypoint x="810" y="105" />
+        <di:waypoint x="882" y="105" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K10" bpmnElement="SF_K10">
+        <di:waypoint x="980" y="185" />
+        <di:waypoint x="1032" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K11" bpmnElement="SF_K11">
+        <di:waypoint x="1068" y="185" />
+        <di:waypoint x="1122" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K12" bpmnElement="SF_K12">
+        <di:waypoint x="1158" y="185" />
+        <di:waypoint x="1210" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_K13" bpmnElement="SF_K13">
+        <di:waypoint x="1310" y="185" />
+        <di:waypoint x="1362" y="185" />
+      </bpmndi:BPMNEdge>
+
+      <!-- ===== Participant: Spezialfertiger ===== -->
+      <bpmndi:BPMNShape id="Shape_Participant_Spezialfertiger" bpmnElement="Participant_Spezialfertiger" isHorizontal="true">
+        <dc:Bounds x="160" y="380" width="1800" height="1200" />
+      </bpmndi:BPMNShape>
+
+      <!-- Lanes -->
+      <bpmndi:BPMNShape id="Shape_Lane_Vertrieb" bpmnElement="Lane_Vertrieb" isHorizontal="true">
+        <dc:Bounds x="190" y="380" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Lane_Ingenieur" bpmnElement="Lane_Ingenieur" isHorizontal="true">
+        <dc:Bounds x="190" y="580" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Lane_Einkauf" bpmnElement="Lane_Einkauf" isHorizontal="true">
+        <dc:Bounds x="190" y="780" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Lane_Produktion" bpmnElement="Lane_Produktion" isHorizontal="true">
+        <dc:Bounds x="190" y="980" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Lane_Versand" bpmnElement="Lane_Versand" isHorizontal="true">
+        <dc:Bounds x="190" y="1180" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Lane_Verwaltung" bpmnElement="Lane_Verwaltung" isHorizontal="true">
+        <dc:Bounds x="190" y="1380" width="1770" height="200" />
+      </bpmndi:BPMNShape>
+
+      <!-- Vertrieb FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_StartEvent_AnfrageEingegangen" bpmnElement="StartEvent_AnfrageEingegangen">
+        <dc:Bounds x="252" y="462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AnfrageErfassen" bpmnElement="Task_AnfrageErfassen">
+        <dc:Bounds x="340" y="440" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_GW_Machbar" bpmnElement="GW_Machbar" isMarkerVisible="true">
+        <dc:Bounds x="675" y="455" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AbsageSenden" bpmnElement="Task_AbsageSenden">
+        <dc:Bounds x="780" y="390" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Absage_SF" bpmnElement="EndEvent_Absage_SF">
+        <dc:Bounds x="932" y="412" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_AngebotErstellen" bpmnElement="Task_AngebotErstellen">
+        <dc:Bounds x="880" y="500" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_AuftragEingegangen" bpmnElement="Event_AuftragEingegangen">
+        <dc:Bounds x="1032" y="522" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Ingenieur FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_Task_MachbarkeitPruefen" bpmnElement="Task_MachbarkeitPruefen">
+        <dc:Bounds x="500" y="640" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_FertigungsplanErstellen" bpmnElement="Task_FertigungsplanErstellen">
+        <dc:Bounds x="650" y="640" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_MateriallisteErstellen" bpmnElement="Task_MateriallisteErstellen">
+        <dc:Bounds x="800" y="640" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Einkauf FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_Task_TeileBestellen" bpmnElement="Task_TeileBestellen">
+        <dc:Bounds x="1100" y="840" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Produktion FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_Task_GeraetFertigen" bpmnElement="Task_GeraetFertigen">
+        <dc:Bounds x="1250" y="1040" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Task_QualitaetPruefen" bpmnElement="Task_QualitaetPruefen">
+        <dc:Bounds x="1400" y="1040" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Versand FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_Task_GeraetVerpackenLiefern" bpmnElement="Task_GeraetVerpackenLiefern">
+        <dc:Bounds x="1530" y="1240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Verwaltung FlowNodes -->
+      <bpmndi:BPMNShape id="Shape_Task_RechnungErstellen" bpmnElement="Task_RechnungErstellen">
+        <dc:Bounds x="1530" y="1440" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_Event_ZahlungEingegangen" bpmnElement="Event_ZahlungEingegangen">
+        <dc:Bounds x="1692" y="1462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNShape id="Shape_EndEvent_Spezialfertiger" bpmnElement="EndEvent_Spezialfertiger">
+        <dc:Bounds x="1782" y="1462" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Spezialfertiger SequenceFlow Edges -->
+      <bpmndi:BPMNEdge id="Edge_SF_S1" bpmnElement="SF_S1">
+        <di:waypoint x="288" y="480" />
+        <di:waypoint x="340" y="480" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S2" bpmnElement="SF_S2">
+        <di:waypoint x="440" y="480" />
+        <di:waypoint x="470" y="480" />
+        <di:waypoint x="470" y="680" />
+        <di:waypoint x="500" y="680" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S3" bpmnElement="SF_S3">
+        <di:waypoint x="600" y="680" />
+        <di:waypoint x="637" y="680" />
+        <di:waypoint x="637" y="480" />
+        <di:waypoint x="675" y="480" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S4" bpmnElement="SF_S4">
+        <di:waypoint x="700" y="455" />
+        <di:waypoint x="700" y="430" />
+        <di:waypoint x="780" y="430" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S5" bpmnElement="SF_S5">
+        <di:waypoint x="700" y="505" />
+        <di:waypoint x="700" y="640" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S6" bpmnElement="SF_S6">
+        <di:waypoint x="880" y="430" />
+        <di:waypoint x="932" y="430" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S7" bpmnElement="SF_S7">
+        <di:waypoint x="750" y="680" />
+        <di:waypoint x="800" y="680" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S8" bpmnElement="SF_S8">
+        <di:waypoint x="900" y="680" />
+        <di:waypoint x="930" y="680" />
+        <di:waypoint x="930" y="580" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S9" bpmnElement="SF_S9">
+        <di:waypoint x="980" y="540" />
+        <di:waypoint x="1032" y="540" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S10" bpmnElement="SF_S10">
+        <di:waypoint x="1068" y="540" />
+        <di:waypoint x="1084" y="540" />
+        <di:waypoint x="1084" y="880" />
+        <di:waypoint x="1100" y="880" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S11" bpmnElement="SF_S11">
+        <di:waypoint x="1200" y="880" />
+        <di:waypoint x="1225" y="880" />
+        <di:waypoint x="1225" y="1080" />
+        <di:waypoint x="1250" y="1080" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S12" bpmnElement="SF_S12">
+        <di:waypoint x="1350" y="1080" />
+        <di:waypoint x="1400" y="1080" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S13" bpmnElement="SF_S13">
+        <di:waypoint x="1500" y="1080" />
+        <di:waypoint x="1515" y="1080" />
+        <di:waypoint x="1515" y="1280" />
+        <di:waypoint x="1530" y="1280" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S14" bpmnElement="SF_S14">
+        <di:waypoint x="1580" y="1320" />
+        <di:waypoint x="1580" y="1440" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S15" bpmnElement="SF_S15">
+        <di:waypoint x="1630" y="1480" />
+        <di:waypoint x="1692" y="1480" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_SF_S16" bpmnElement="SF_S16">
+        <di:waypoint x="1728" y="1480" />
+        <di:waypoint x="1782" y="1480" />
+      </bpmndi:BPMNEdge>
+
+      <!-- ===== MessageFlow Edges ===== -->
+      <bpmndi:BPMNEdge id="Edge_MF_AnfrageSenden" bpmnElement="MF_AnfrageSenden">
+        <di:waypoint x="360" y="225" />
+        <di:waypoint x="360" y="340" />
+        <di:waypoint x="270" y="340" />
+        <di:waypoint x="270" y="462" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_AbsageSenden" bpmnElement="MF_AbsageSenden">
+        <di:waypoint x="830" y="390" />
+        <di:waypoint x="830" y="340" />
+        <di:waypoint x="570" y="340" />
+        <di:waypoint x="570" y="123" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_AngebotSenden" bpmnElement="MF_AngebotSenden">
+        <di:waypoint x="930" y="500" />
+        <di:waypoint x="930" y="340" />
+        <di:waypoint x="570" y="340" />
+        <di:waypoint x="570" y="203" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_AuftragErteilen" bpmnElement="MF_AuftragErteilen">
+        <di:waypoint x="930" y="225" />
+        <di:waypoint x="930" y="340" />
+        <di:waypoint x="1050" y="340" />
+        <di:waypoint x="1050" y="522" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_GeraetLiefern" bpmnElement="MF_GeraetLiefern">
+        <di:waypoint x="1580" y="1240" />
+        <di:waypoint x="1580" y="340" />
+        <di:waypoint x="1050" y="340" />
+        <di:waypoint x="1050" y="203" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_RechnungSenden" bpmnElement="MF_RechnungSenden">
+        <di:waypoint x="1560" y="1440" />
+        <di:waypoint x="1560" y="340" />
+        <di:waypoint x="1140" y="340" />
+        <di:waypoint x="1140" y="203" />
+      </bpmndi:BPMNEdge>
+
+      <bpmndi:BPMNEdge id="Edge_MF_ZahlungSenden" bpmnElement="MF_ZahlungSenden">
+        <di:waypoint x="1260" y="225" />
+        <di:waypoint x="1260" y="340" />
+        <di:waypoint x="1710" y="340" />
+        <di:waypoint x="1710" y="1462" />
+      </bpmndi:BPMNEdge>
+
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</bpmn2:definitions>

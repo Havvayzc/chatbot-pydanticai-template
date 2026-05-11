@@ -1,0 +1,20 @@
+Abarbeiten von Aufträgen
+Die straffere, an agilen Methoden orientier-te Abarbeitung ist das Herzstück des neuen
+Ansatzes von CrazyBuilders. Vereinfacht soll das wie folgt ablaufen.
+Das System triggert jeden der Beteiligten Handwerker.
+Für jeden Handwerker läuft es nach dem-selben Schema ab. Er bereitet den Einsatz
+vor. Danach gilt folgende Routine, die sich täglich wiederholt, solange der Auftrag nicht
+zur Abnahme bereit ist: Der Handwer-ker ruft seine Aufgabenliste ab und erledigt die
+Aufgaben. Falls sich im Rahmen seiner Arbeiten eine Änderung am Plan ergibt, so teilt
+er dies dem System mit. In jedem Fall trägt er am Ende des Tages seinen Fort-schritt
+ins System ein.
+Für jeden Handwerker verfolgt das System, ob Änderungs- oder Fortschrittsmeldungen
+eintreffen. Auf eine Änderung am Plan rea-giert das System, indem es die Aufgaben
+und Plandaten intelligent aktualisiert. Auch die Fortschrittsmeldungen analysiert das
+System. Sollte sich ergeben, dass damit alle Aufgaben erledigt sind, schickt es dem
+Bau-leiter eine Nachricht, dass die Abnahme erfolgen kann, die der Bauleiter anschlie
+ßend durchführt. Damit ist für das System der Auftrag eines Handwerkers erfolgreich
+erledigt. Braucht der Handwerker für die Fertigstellung länger als die vorab festge-legte
+Deadline, erhält der Handwerker eine Erinnerung.
+Sind alle Handwerkerleistungen abgeschlos-sen (d.h. jeder Handwerker hat seine Liste
+abgearbeitet), dann wird der Bauleiter vom System informiert.
