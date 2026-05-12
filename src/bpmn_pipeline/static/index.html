@@ -89,6 +89,8 @@
   </div>
 
   <script>
+    let _pollInterval = null;
+
     async function generate() {
       const transcript = document.getElementById("transcript").value.trim();
       const btn = document.getElementById("btn");
@@ -102,33 +104,62 @@
 
       btn.disabled = true;
       status.className = "status loading";
-      status.innerHTML = '<span class="spinner"></span>Generiere BPMN … das kann bis zu 2 Minuten dauern.';
+      status.innerHTML = '<span class="spinner"></span>Pipeline gestartet … das kann 5–10 Minuten dauern.';
 
       try {
         const form = new FormData();
         form.append("transcript", transcript);
 
         const res = await fetch("/generate", { method: "POST", body: form });
-
         if (!res.ok) {
           const err = await res.json().catch(() => ({ detail: res.statusText }));
           throw new Error(err.detail || res.statusText);
         }
 
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "process.bpmn";
-        a.click();
-        URL.revokeObjectURL(url);
+        const { job_id } = await res.json();
+        _pollInterval = setInterval(() => poll(job_id, btn, status), 3000);
 
-        status.className = "status success";
-        status.textContent = "✓ process.bpmn wurde heruntergeladen.";
       } catch (e) {
         status.className = "status error";
         status.textContent = "Fehler: " + e.message;
-      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function poll(job_id, btn, status) {
+      try {
+        const res = await fetch(`/status/${job_id}`);
+        const data = await res.json();
+
+        if (data.status === "running") return;
+
+        clearInterval(_pollInterval);
+
+        if (data.status === "error") {
+          status.className = "status error";
+          status.textContent = "Fehler: " + (data.detail || "Unbekannter Fehler");
+          btn.disabled = false;
+          return;
+        }
+
+        if (data.status === "done") {
+          const blob = await fetch(`/download/${job_id}`).then(r => r.blob());
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "process.bpmn";
+          a.click();
+          URL.revokeObjectURL(url);
+
+          status.className = "status success";
+          status.textContent = "✓ process.bpmn wurde heruntergeladen.";
+          btn.disabled = false;
+        }
+
+      } catch (e) {
+        clearInterval(_pollInterval);
+        status.className = "status error";
+        status.textContent = "Fehler beim Status-Check: " + e.message;
         btn.disabled = false;
       }
     }

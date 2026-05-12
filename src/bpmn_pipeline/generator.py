@@ -45,6 +45,22 @@ _agent = Agent(
 )
 
 
+async def correct_bpmn(transcript: str, current_xml: str, correction_instructions: str) -> str:
+    """
+    Korrigiert ein bestehendes BPMN anhand von Judge-Findings.
+    """
+    user_message = (
+        f"Transkript:\n\n{transcript}\n\n"
+        f"Aktuelles BPMN (enthält Fehler):\n\n{current_xml}\n\n"
+        f"Korrekturanweisungen:\n\n{correction_instructions}"
+    )
+    logger.info("Generator: Korrektur-Durchlauf...")
+    result = await _agent.run(user_message)
+    raw: str = result.output
+    logger.info(f"Generator: Korrektur — {len(raw)} Zeichen empfangen.")
+    return _clean_xml(raw)
+
+
 async def generate_bpmn(transcript: str) -> str:
     """
     Erzeuge valides BPMN-2.0-XML aus einem Transkript.
